@@ -1,104 +1,63 @@
 import * as THREE from 'three';
 
 function main() {
+  const canvas = document.querySelector('#c');
+  const renderer = new THREE.WebGLRenderer({ antialias: true, canvas });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
 
-	const canvas = document.querySelector( '#c' );
-	const renderer = new THREE.WebGLRenderer( { antialias: true, canvas } );
-    renderer.setSize( window.innerWidth, window.innerHeight );
-	const fov = 75;
-	const aspect =  window.innerWidth / window.innerHeight; // the canvas default
-    
-	const near = 0.1;
-	const far = 5;
-	const camera = new THREE.PerspectiveCamera( fov, aspect, near, far );
-	camera.position.z = 2;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x111111);
 
-	const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.z = 5;
 
-	{
+  const light = new THREE.DirectionalLight(0xffffff, 3);
+  light.position.set(1, 1, 2);
+  scene.add(light);
 
-		const color = 0xFFFFFF;
-		const intensity = 3;
-		const light = new THREE.DirectionalLight( color, intensity );
-		light.position.set( - 1, 2, 4 );
-		scene.add( light );
+  // 🟩 Create a mesh
+  const geometry = new THREE.BoxGeometry();
+  const material = new THREE.MeshStandardMaterial({ color: 0x44aa88 });
+  const cube = new THREE.Mesh(geometry, material);
+  scene.add(cube);
 
-	}
+  // 🎬 Create keyframe animation data
+  // Animate position.y and rotation.y over time
+  const times = [0, 1, 2, 3, 4]; // seconds
+  const valuesY = [0, 1, 0, -1, 0]; // bounce up/down
+  const valuesRotY = [0, Math.PI, Math.PI * 2, Math.PI * 3, Math.PI * 4];
 
-	const boxWidth = 1;
-	const boxHeight = 1;
-	const boxDepth = 1;
-	const geometry = new THREE.BoxGeometry( boxWidth, boxHeight, boxDepth );
-    const circleGeo= new THREE.CircleGeometry(1,50)
+  const posTrack = new THREE.NumberKeyframeTrack('.position[y]', times, valuesY);
+  const rotTrack = new THREE.NumberKeyframeTrack('.rotation[y]', times, valuesRotY);
 
-	const material = new THREE.MeshBasicMaterial( { color: 0x44aa88 } ); // greenish blue
-    const cubes = [
-        makeInstance(geometry, 0x44aa88,  0),
-        makeInstance_circle(circleGeo, 0x8844aa, -2),
-        makeInstance(geometry, 0xaa8844,  2),
-    ];
-    console.log(cubes)
-	// const cube = new THREE.Mesh( geometry, material );
-	// scene.add( cube );
+  // Combine tracks into a clip
+  const clip = new THREE.AnimationClip('Dance', -1, [posTrack, rotTrack]);
 
-    function makeInstance(geometry, color, x) {
-        const material = new THREE.MeshPhongMaterial({color});
-        
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
-        cube.name="Cube";
-        
-        cube.position.x = x;
-        
-        return cube;
-    }
+  // 🎛️ Create an AnimationMixer
+  const mixer = new THREE.AnimationMixer(cube);
+  const action = mixer.clipAction(clip);
+  action.loop = THREE.LoopRepeat; // repeat forever
+  action.clampWhenFinished = true;
+  action.play();
 
-    function makeInstance_circle(geometry, color, x){
-        const material = new THREE.MeshPhongMaterial({color});
-        
-        const circle = new THREE.Mesh(geometry, material);
-        scene.add(circle);
-        circle.name="circle";
-        circle.position.x = x;
-        
-        return circle;
-    }
+  const clock = new THREE.Clock();
 
-// 🎵 Animate
-	function render(time) {
-		time *= 0.001; // convert to seconds
+  // 🔁 Animate loop
+  function animate() {
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    mixer.update(delta); // update the mixer with frame time
+    renderer.render(scene, camera);
+  }
+  animate();
 
-		cubes.forEach((obj, ndx) => {
-			const t = time + ndx * 0.5; // phase shift per object
-
-			if (obj.name === 'Cube') {
-				// Rotate and scale rhythmically
-				obj.rotation.x = t * 2;
-				obj.rotation.y = t * 1.5;
-				obj.scale.y = 1 + Math.sin(t * 5) * 0.3;
-				obj.position.y = Math.sin(t * 4) * 0.5; // bounce up and down
-			}
-
-			if (obj.name === 'circle') {
-				// Pulse and move in a wave
-				obj.scale.setScalar(1 + Math.sin(t * 3) * 0.4);
-				obj.position.y = Math.cos(t * 2) * 0.4;
-				obj.rotation.z = Math.sin(t * 3) * 0.5;
-			}
-		});
-
-		renderer.render(scene, camera);
-		requestAnimationFrame(render);
-	}
-
-	requestAnimationFrame( render );
-
-    window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
+  // Handle resize
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
 }
 
 main();
