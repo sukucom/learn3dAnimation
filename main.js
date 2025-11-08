@@ -4,9 +4,10 @@ function main() {
 
 	const canvas = document.querySelector( '#c' );
 	const renderer = new THREE.WebGLRenderer( { antialias: true, canvas } );
-
+    renderer.setSize( window.innerWidth, window.innerHeight );
 	const fov = 75;
 	const aspect =  window.innerWidth / window.innerHeight; // the canvas default
+    
 	const near = 0.1;
 	const far = 5;
 	const camera = new THREE.PerspectiveCamera( fov, aspect, near, far );
@@ -28,13 +29,15 @@ function main() {
 	const boxHeight = 1;
 	const boxDepth = 1;
 	const geometry = new THREE.BoxGeometry( boxWidth, boxHeight, boxDepth );
+    const circleGeo= new THREE.CircleGeometry(1,50)
 
 	const material = new THREE.MeshBasicMaterial( { color: 0x44aa88 } ); // greenish blue
     const cubes = [
         makeInstance(geometry, 0x44aa88,  0),
-        makeInstance(geometry, 0x8844aa, -2),
+        makeInstance_circle(circleGeo, 0x8844aa, -2),
         makeInstance(geometry, 0xaa8844,  2),
     ];
+    console.log(cubes)
 	// const cube = new THREE.Mesh( geometry, material );
 	// scene.add( cube );
 
@@ -43,36 +46,59 @@ function main() {
         
         const cube = new THREE.Mesh(geometry, material);
         scene.add(cube);
+        cube.name="Cube";
         
         cube.position.x = x;
         
         return cube;
     }
 
-	function render( time ) {
+    function makeInstance_circle(geometry, color, x){
+        const material = new THREE.MeshPhongMaterial({color});
+        
+        const circle = new THREE.Mesh(geometry, material);
+        scene.add(circle);
+        circle.name="circle";
+        circle.position.x = x;
+        
+        return circle;
+    }
 
-		time *= 0.001; // convert time to seconds
+// 🎵 Animate
+	function render(time) {
+		time *= 0.001; // convert to seconds
 
-		cubes.forEach((cube, ndx) => {
-            const speed = 1 + ndx * .1;
-            const rot = time * speed;
-            cube.rotation.x = rot;
-            cube.rotation.y = rot;
-        });
+		cubes.forEach((obj, ndx) => {
+			const t = time + ndx * 0.5; // phase shift per object
 
-		renderer.render( scene, camera );
+			if (obj.name === 'Cube') {
+				// Rotate and scale rhythmically
+				obj.rotation.x = t * 2;
+				obj.rotation.y = t * 1.5;
+				obj.scale.y = 1 + Math.sin(t * 5) * 0.3;
+				obj.position.y = Math.sin(t * 4) * 0.5; // bounce up and down
+			}
 
-		requestAnimationFrame( render );
+			if (obj.name === 'circle') {
+				// Pulse and move in a wave
+				obj.scale.setScalar(1 + Math.sin(t * 3) * 0.4);
+				obj.position.y = Math.cos(t * 2) * 0.4;
+				obj.rotation.z = Math.sin(t * 3) * 0.5;
+			}
+		});
 
+		renderer.render(scene, camera);
+		requestAnimationFrame(render);
 	}
 
 	requestAnimationFrame( render );
 
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
 }
 
 main();
-// window.addEventListener('resize', () => {
-//   camera.aspect = window.innerWidth / window.innerHeight;
-//   camera.updateProjectionMatrix();
-//   renderer.setSize(window.innerWidth, window.innerHeight);
-// });
