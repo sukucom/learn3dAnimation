@@ -1,92 +1,203 @@
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.164/build/three.module.js",
-    "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/index.js"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Event Photo Wall - Random Animations + Controls</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.164/build/three.module.js",
+      "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/index.js"
+    }
   }
-}
-</script>
+  </script>
+  <style>
+    body { margin: 0; overflow: hidden; background: black; font-family: sans-serif; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #controls {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      padding: 10px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 6px;
+      color: white;
+      z-index: 10;
+    }
+    button, select {
+      background: #111;
+      color: white;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 6px 10px;
+      margin-right: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #333; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="prev">◀ Prev</button>
+    <button id="next">Next ▶</button>
+    <button id="random">🎲 Random</button>
+    <select id="animationType">
+      <option value="random">Random Animation</option>
+      <option value="slide">Slide</option>
+      <option value="flip">Flip</option>
+      <option value="fade">Fade</option>
+      <option value="zoom">Zoom</option>
+      <option value="orbit">Orbit</option>
+    </select>
+  </div>
 
-<canvas id="photoWall"></canvas>
+  <canvas id="photoWall"></canvas>
 
-<script type="module">
-import * as THREE from 'three';
-import { gsap } from 'gsap';
+  <script type="module">
+    import * as THREE from 'three';
+    import { gsap } from 'gsap';
 
-const canvas = document.getElementById('photoWall');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+    const canvas = document.getElementById('photoWall');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 5;
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+    camera.position.set(0, 0, 15);
 
-// Light
-const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(5, 5, 5);
-scene.add(light);
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(3, 3, 5);
+    scene.add(light);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
-// Photo URLs (these could come from your API)
-const imageUrls = [
-  'https://picsum.photos/400/300?random=1',
-  'https://picsum.photos/400/300?random=2',
-  'https://picsum.photos/400/300?random=3',
-  'https://picsum.photos/400/300?random=4',
-  'https://picsum.photos/400/300?random=5',
-  'https://picsum.photos/400/300?random=6',
-  'https://picsum.photos/400/300?random=7',
-  'https://picsum.photos/400/300?random=8',
-  'https://picsum.photos/400/300?random=9',
-    'https://picsum.photos/400/300?random=10',
-    'https://picsum.photos/400/300?random=11',
-    'https://picsum.photos/400/300?random=12'
-    
-];
+    const loader = new THREE.TextureLoader();
+    let imageUrls = [
+      'https://picsum.photos/id/1011/800/600',
+      'https://picsum.photos/id/1025/600/900',
+      'https://picsum.photos/id/1042/1200/800',
+      'https://picsum.photos/id/1059/900/900',
+      'https://picsum.photos/id/1069/1000/700'
+    ];
 
-const loader = new THREE.TextureLoader();
-const photoMeshes = [];
+    const photoMeshes = [];
+    const spacing = 25;
+    const baseScale = 0.01;
+    let currentIndex = 0;
+    let animationType = 'random';
 
-imageUrls.forEach((url, i) => {
-  loader.load(url, texture => {
-    const geometry = new THREE.PlaneGeometry(1.5, 1);
-    const material = new THREE.MeshLambertMaterial({ map: texture });
-    const mesh = new THREE.Mesh(geometry, material);
+    const animations = {
+      slide(nextIndex) {
+        gsap.to(camera.position, { z: -nextIndex * spacing + 15, duration: 3, ease: 'power2.inOut' });
+      },
+      flip(nextIndex) {
+        const nextMesh = photoMeshes[nextIndex];
+        gsap.to(nextMesh.rotation, { y: Math.PI * 2, duration: 1.2, ease: 'power2.inOut' });
+        gsap.to(camera.position, { z: -nextIndex * spacing + 15, duration: 2 });
+      },
+      fade(nextIndex) {
+        photoMeshes.forEach((m, i) => gsap.to(m.material, { opacity: i === nextIndex ? 1 : 0, duration: 1.5 }));
+      },
+      zoom(nextIndex) {
+        gsap.to(camera.position, { z: camera.position.z - 5, duration: 1 });
+        gsap.to(camera.position, { z: -nextIndex * spacing + 15, duration: 2, delay: 1 });
+      },
+      orbit(nextIndex) {
+        gsap.to(camera.position, { 
+          x: Math.sin(nextIndex) * 5, 
+          y: Math.cos(nextIndex) * 2,
+          z: -nextIndex * spacing + 15, 
+          duration: 3, ease: 'power2.inOut'
+        });
+      }
+    };
 
-    // Random grid layout
-    mesh.position.x = (i % 4) - 1.5 + (Math.random() - 0.5);
-    mesh.position.y = Math.floor(i / 4) - 0.5 + (Math.random() - 0.5);
-    mesh.rotation.z = (Math.random() - 0.5) * 0.3;
+    function performAnimation(nextIndex) {
+      let chosen = animationType;
+      if (animationType === 'random') {
+        const keys = Object.keys(animations);
+        chosen = keys[Math.floor(Math.random() * keys.length)];
+      }
+      animations[chosen](nextIndex);
+      currentIndex = nextIndex;
+    }
 
-    scene.add(mesh);
-    photoMeshes.push(mesh);
-  });
-});
+    function showNext() {
+      const next = (currentIndex + 1) % photoMeshes.length;
+      performAnimation(next);
+    }
 
-function animate() {
-  requestAnimationFrame(animate);
-  renderer.render(scene, camera);
-}
-animate();
+    function showPrev() {
+      const prev = (currentIndex - 1 + photoMeshes.length) % photoMeshes.length;
+      performAnimation(prev);
+    }
 
-// Example animation: highlight random photo
-setInterval(() => {
-  if (!photoMeshes.length) return;
-  const mesh = photoMeshes[Math.floor(Math.random() * photoMeshes.length)];
+    function loadPhotos() {
+      let loaded = 0;
+      imageUrls.forEach((url, i) => {
+        loader.load(url, texture => {
+          const { width, height } = texture.image;
+          const geometry = new THREE.PlaneGeometry(width * baseScale, height * baseScale);
+          const material = new THREE.MeshLambertMaterial({ 
+            map: texture, 
+            side: THREE.DoubleSide, 
+            transparent: true,
+            opacity: i === 0 ? 1 : 0
+          });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.position.z = -i * spacing;
+          scene.add(mesh);
+          photoMeshes.push(mesh);
+          loaded++;
+          if (loaded === imageUrls.length) startLoop();
+        });
+      });
+    }
 
-  gsap.to(mesh.scale, { x: 4, y: 4, duration: 1.2, ease: 'power2.out' });
-  gsap.to(mesh.position, { z: 1, duration: 1.2 });
-  
-  setTimeout(() => {
-    gsap.to(mesh.scale, { x: 1, y: 1, duration: 1.2, ease: 'power2.in' });
-    gsap.to(mesh.position, { z: 0, duration: 1.2 });
-  }, 3000);
-}, 5000);
+    function startLoop() {
+      setInterval(() => {
+        showNext();
+      }, 5000);
+    }
 
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-</script>
+    function animate() {
+      requestAnimationFrame(animate);
+      photoMeshes.forEach((mesh, i) => {
+        mesh.rotation.y += 0.0008;
+        mesh.position.y = Math.sin(Date.now() * 0.001 + i) * 0.2;
+      });
+      renderer.render(scene, camera);
+    }
+
+    document.getElementById('next').addEventListener('click', showNext);
+    document.getElementById('prev').addEventListener('click', showPrev);
+    document.getElementById('random').addEventListener('click', () => {
+      performAnimation(Math.floor(Math.random() * photoMeshes.length));
+    });
+    document.getElementById('animationType').addEventListener('change', e => {
+      animationType = e.target.value;
+    });
+
+    loadPhotos();
+    animate();
+
+    // Optional: Auto-refresh new photos from server every 30s
+    // setInterval(async () => {
+    //   const res = await fetch('/api/photos');
+    //   const newUrls = await res.json();
+    //   if (newUrls.length !== imageUrls.length) {
+    //     imageUrls = newUrls;
+    //     // Reload scene with new photos
+    //   }
+    // }, 30000);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
