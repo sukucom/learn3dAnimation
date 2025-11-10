@@ -1,0 +1,92 @@
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164/build/three.module.js",
+    "gsap": "https://cdn.jsdelivr.net/npm/gsap@3.12.5/index.js"
+  }
+}
+</script>
+
+<canvas id="photoWall"></canvas>
+
+<script type="module">
+import * as THREE from 'three';
+import { gsap } from 'gsap';
+
+const canvas = document.getElementById('photoWall');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 5;
+
+// Light
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5, 5, 5);
+scene.add(light);
+
+// Photo URLs (these could come from your API)
+const imageUrls = [
+  'https://picsum.photos/400/300?random=1',
+  'https://picsum.photos/400/300?random=2',
+  'https://picsum.photos/400/300?random=3',
+  'https://picsum.photos/400/300?random=4',
+  'https://picsum.photos/400/300?random=5',
+  'https://picsum.photos/400/300?random=6',
+  'https://picsum.photos/400/300?random=7',
+  'https://picsum.photos/400/300?random=8',
+  'https://picsum.photos/400/300?random=9',
+    'https://picsum.photos/400/300?random=10',
+    'https://picsum.photos/400/300?random=11',
+    'https://picsum.photos/400/300?random=12'
+    
+];
+
+const loader = new THREE.TextureLoader();
+const photoMeshes = [];
+
+imageUrls.forEach((url, i) => {
+  loader.load(url, texture => {
+    const geometry = new THREE.PlaneGeometry(1.5, 1);
+    const material = new THREE.MeshLambertMaterial({ map: texture });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    // Random grid layout
+    mesh.position.x = (i % 4) - 1.5 + (Math.random() - 0.5);
+    mesh.position.y = Math.floor(i / 4) - 0.5 + (Math.random() - 0.5);
+    mesh.rotation.z = (Math.random() - 0.5) * 0.3;
+
+    scene.add(mesh);
+    photoMeshes.push(mesh);
+  });
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+animate();
+
+// Example animation: highlight random photo
+setInterval(() => {
+  if (!photoMeshes.length) return;
+  const mesh = photoMeshes[Math.floor(Math.random() * photoMeshes.length)];
+
+  gsap.to(mesh.scale, { x: 4, y: 4, duration: 1.2, ease: 'power2.out' });
+  gsap.to(mesh.position, { z: 1, duration: 1.2 });
+  
+  setTimeout(() => {
+    gsap.to(mesh.scale, { x: 1, y: 1, duration: 1.2, ease: 'power2.in' });
+    gsap.to(mesh.position, { z: 0, duration: 1.2 });
+  }, 3000);
+}, 5000);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>

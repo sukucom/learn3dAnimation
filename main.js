@@ -25,7 +25,7 @@ function main() {
   // 🎬 Create keyframe animation data
   // Animate position.y and rotation.y over time
   const times = [0, 1, 2, 3, 4]; // seconds
-  const valuesY = [0, 1, 0, -1, 0]; // bounce up/down
+  const valuesY = [0, 2, 0, -2, 0]; // bounce up/down
   const valuesRotY = [0, Math.PI, Math.PI * 2, Math.PI * 3, Math.PI * 4];
 
   const posTrack = new THREE.NumberKeyframeTrack('.position[y]', times, valuesY);
